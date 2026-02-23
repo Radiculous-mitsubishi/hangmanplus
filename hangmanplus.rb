@@ -1,39 +1,6 @@
-# hangmanplus.rb
+# v10 code from hangman_shop.rb
 
-# Existing code above...
+# Insert the v10 code content here
 
-# Implementing the consumable menu feature
-class HangmanPlus
-  def initialize
-    @consumables = []
-  end
+# Add your code as per the hangman game logic
 
-  def start
-    loop do
-      display_menu
-      input = gets.chomp
-      if input == '+'
-        display_consumable_menu
-      else
-        process_guess(input)
-      end
-    end
-  end
-
-  def display_consumable_menu
-    puts "--- Consumable Menu ---"
-    @consumables.each_with_index do |item, index|
-      puts "#{index + 1}: #{item}"
-    end
-    puts "Press any key to go back to the game..."
-    gets.chomp # Wait for user input to return
-  end
-
-  def process_guess(input)
-    # Existing guess processing logic...
-  end
-
-  # Other existing methods...
-end
-
-# Existing code below...
