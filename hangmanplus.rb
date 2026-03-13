@@ -940,6 +940,48 @@ def play_round(category, word, state, difficulty = :easy)
   end
 end
 
+# ── Difficulty Transition Prompts ──────────────────────────
+def show_medium_prompt
+  clear
+  draw_header("★ DIFFICULTY INCREASED ★")
+  draw_divider
+  puts box_line(Color.bold(Color.yellow("You've completed 8 rounds!")))
+  draw_divider
+  puts box_line(Color.bold(Color.yellow("MEDIUM DIFFICULTY UNLOCKED")))
+  draw_divider
+  puts box_line("Difficulty Changes:")
+  puts box_line(Color.cyan("  • Categories are now RANDOM"))
+  puts box_line(Color.dim("  • Category is still shown (you can adapt your strategy)"))
+  puts box_line(Color.dim("  • Word selection is completely unpredictable"))
+  draw_divider
+  puts box_line(Color.dim("Prepare yourself for varied challenges!"))
+  draw_divider
+  puts box_line(Color.bold(Color.yellow("Press Enter to continue...")))
+  draw_footer
+  $stdin.gets
+end
+
+def show_hard_prompt
+  clear
+  draw_header("★ EXTREME DIFFICULTY UNLOCKED ★")
+  draw_divider
+  puts box_line(Color.bold(Color.red("You've completed 15 rounds!")))
+  draw_divider
+  puts box_line(Color.bold(Color.red("HARD DIFFICULTY UNLOCKED")))
+  draw_divider
+  puts box_line("Difficulty Changes:")
+  puts box_line(Color.red("  • Categories are now HIDDEN"))
+  puts box_line(Color.dim("  • You won't know what type of word you're guessing"))
+  puts box_line(Color.dim("  • Word length is still shown"))
+  puts box_line(Color.dim("  • Pure guessing skill is required!"))
+  draw_divider
+  puts box_line(Color.yellow("This is a significant jump in difficulty. Stay sharp!"))
+  draw_divider
+  puts box_line(Color.bold(Color.yellow("Press Enter to continue...")))
+  draw_footer
+  $stdin.gets
+end
+
 # ── Extreme Mode Disclaimer ───────────────────────────────
 def show_extreme_prompt
   loop do
@@ -1008,8 +1050,10 @@ def main
     state[:total_rounds] += 1
 
     if state[:total_rounds] == 9 && difficulty == :easy
+      show_medium_prompt
       difficulty = :medium
     elsif state[:total_rounds] == 16 && difficulty == :medium
+      show_hard_prompt
       difficulty = :hard
     elsif state[:total_rounds] == 26 && difficulty == :hard
       difficulty = show_extreme_prompt
