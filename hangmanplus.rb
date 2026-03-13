@@ -477,6 +477,9 @@ def roll_skill_cards(num_rolls = 3)
 end
 
 def skill_card_selection_menu(state)
+  reroll_count = 0
+  base_reroll_cost = 20
+
   loop do
     cards = roll_skill_cards(3)
 
@@ -493,7 +496,14 @@ def skill_card_selection_menu(state)
     end
 
     draw_divider
-    puts box_line("#{Color.bold(Color.yellow('R'))}. Reroll cards")
+    if reroll_count == 0
+      puts box_line("#{Color.bold(Color.yellow('R'))}. Reroll cards #{Color.dim('(FREE - 1 per card select)')}")
+    else
+      reroll_cost = (base_reroll_cost * ((1.075) ** reroll_count)).round
+      can_afford = state[:score] >= reroll_cost
+      cost_color = can_afford ? Color.green("#{reroll_cost}pts") : Color.red("#{reroll_cost}pts")
+      puts box_line("#{Color.bold(Color.yellow('R'))}. Reroll cards #{cost_color}")
+    end
     puts box_line("#{Color.bold(Color.yellow('S'))}. Skip (no reward)")
     draw_footer
     print "  Choice: "
@@ -509,7 +519,21 @@ def skill_card_selection_menu(state)
       sleep 1.5
       return
     when 'r'
-      # Loop continues, reroll
+      if reroll_count == 0
+        reroll_count += 1
+        puts Color.cyan("  [FREE] Rerolling cards...")
+        sleep 0.8
+      else
+        reroll_cost = (base_reroll_cost * ((1.075) ** reroll_count)).round
+        if state[:score] < reroll_cost
+          puts Color.red("  Not enough points! Need #{reroll_cost}pts, have #{state[:score]}pts"); sleep 1
+        else
+          state[:score] -= reroll_cost
+          reroll_count += 1
+          puts Color.green("  [-#{reroll_cost}pts] Rerolling cards...")
+          sleep 0.8
+        end
+      end
     when 's'
       puts Color.yellow("\n  Skipped reward.")
       sleep 1
