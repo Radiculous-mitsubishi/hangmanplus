@@ -750,7 +750,7 @@ def choose_category(difficulty = :easy)
       draw_footer
       print "  Choice: "
 
-      input = $stdin.getch.strip.downcase
+      input = $stdin.gets.strip.downcase
       puts input
       return keys.sample   if input == 'r'
       return keys[input.to_i - 1] if (1..keys.length).include?(input.to_i)
@@ -1002,15 +1002,15 @@ def main
   draw_footer
   $stdin.getch
 
-  difficulty = choose_difficulty
+  difficulty = :easy
 
   loop do
     state[:total_rounds] += 1
 
     if state[:total_rounds] == 9 && difficulty == :easy
-      difficulty = choose_difficulty
+      difficulty = :medium
     elsif state[:total_rounds] == 16 && difficulty == :medium
-      difficulty = choose_difficulty
+      difficulty = :hard
     elsif state[:total_rounds] == 26 && difficulty == :hard
       difficulty = show_extreme_prompt
     end
