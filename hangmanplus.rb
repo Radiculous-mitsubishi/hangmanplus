@@ -336,18 +336,35 @@ def draw_hangman(wrong_count, max_wrong)
 end
 
 # ── Main game screen ──────────────────────────────────────────
-def draw_screen(category, word, guessed, wrong_letters, wrong_count, state, max_wrong)
+def draw_screen(category, word, guessed, wrong_letters, wrong_count, state, max_wrong, difficulty = :easy)
   clear
   draw_header("H  A  N  G  M  A  N")
   draw_hud(state)
   draw_hangman(wrong_count, max_wrong)
   draw_divider
 
-  puts box_line(Color.dim("Category: ") + Color.bold(Color.magenta(category)))
+  difficulty_colors = { easy: Color.green("EASY"), medium: Color.yellow("MEDIUM"), hard: Color.red("HARD"), extreme: Color.magenta("EXTREME") }
+  diff_display = difficulty_colors[difficulty] || "UNKNOWN"
+  round_display = Color.dim("Round: ") + Color.bold(Color.cyan("#{state[:total_rounds]}"))
+  puts box_line(diff_display + Color.dim(" | ") + round_display)
 
-  display = word.chars.map { |c|
-    guessed.include?(c) ? Color.bold(Color.green(" #{c} ")) : Color.dim(" _ ")
-  }.join
+  if difficulty == :easy || difficulty == :medium
+    puts box_line(Color.dim("Category: ") + Color.bold(Color.magenta(category)))
+  elsif difficulty == :hard
+    puts box_line(Color.dim("Category: ") + Color.dim("[Hidden]"))
+  else
+    puts box_line(Color.dim("Category: ") + Color.red("[Hidden]") + Color.dim(" | Length: ") + Color.red("[Hidden]"))
+  end
+
+  if difficulty == :extreme
+    display = word.chars.map { |c|
+      guessed.include?(c) ? Color.bold(Color.green(" #{c} ")) : Color.red("[?]")
+    }.join
+  else
+    display = word.chars.map { |c|
+      guessed.include?(c) ? Color.bold(Color.green(" #{c} ")) : Color.dim(" _ ")
+    }.join
+  end
   puts box_line(display)
 
   if wrong_letters.empty?
@@ -592,24 +609,63 @@ def use_safety_net(state, safety_armed, inv)
   sleep 1
 end
 
-# ── Category menu ─────────────────────────────────────────────
-def choose_category
-  keys = CATEGORIES.keys
+# ── Difficulty Selection Menu ─────────────────────────────
+def choose_difficulty
   loop do
     clear
-    draw_header("Choose a Word Category")
-    keys.each_with_index do |name, i|
-      puts box_line("#{Color.bold(Color.yellow((i+1).to_s))}. #{name} #{Color.dim("(#{CATEGORIES[name].length} words)")}")
-    end
-    puts box_line("#{Color.bold(Color.yellow('R'))}. Random category")
+    draw_header("Select Difficulty")
+    draw_divider
+    puts box_line(Color.bold(Color.green("EASY")) + Color.dim(" - Choose category, category shown"))
+    puts box_line(Color.dim("Rounds 1-8"))
+    draw_divider
+    puts box_line(Color.bold(Color.yellow("MEDIUM")) + Color.dim(" - Random words, category shown"))
+    puts box_line(Color.dim("Rounds 8-15"))
+    draw_divider
+    puts box_line(Color.bold(Color.red("HARD")) + Color.dim(" - Random words, category hidden"))
+    puts box_line(Color.dim("Rounds 15-25"))
+    draw_divider
+    puts box_line(Color.bold(Color.magenta("EXTREME")) + Color.dim(" - Unlock after 25 rounds"))
+    puts box_line(Color.dim("No category hint, word length hidden"))
+    draw_divider
+    puts box_line("Choose difficulty: " + Color.bold(Color.yellow("[E]Easy  [M]Medium  [H]Hard")))
     draw_footer
     print "  Choice: "
 
-    input = $stdin.getch.strip.downcase
+    input = $stdin.getch.downcase
     puts input
-    return keys.sample   if input == 'r'
-    return keys[input.to_i - 1] if (1..keys.length).include?(input.to_i)
-    puts Color.red("  Invalid."); sleep 0.7
+    case input
+    when 'e' then return :easy
+    when 'm' then return :medium
+    when 'h' then return :hard
+    else
+      puts Color.red("  Invalid choice!"); sleep 0.7
+    end
+  end
+end
+
+# ── Category menu ─────────────────────────────────────────────
+def choose_category(difficulty = :easy)
+  keys = CATEGORIES.keys
+  
+  if difficulty == :easy
+    loop do
+      clear
+      draw_header("Choose a Word Category")
+      keys.each_with_index do |name, i|
+        puts box_line("#{Color.bold(Color.yellow((i+1).to_s))}. #{name} #{Color.dim("(#{CATEGORIES[name].length} words)")}")
+      end
+      puts box_line("#{Color.bold(Color.yellow('R'))}. Random category")
+      draw_footer
+      print "  Choice: "
+
+      input = $stdin.getch.strip.downcase
+      puts input
+      return keys.sample   if input == 'r'
+      return keys[input.to_i - 1] if (1..keys.length).include?(input.to_i)
+      puts Color.red("  Invalid."); sleep 0.7
+    end
+  else
+    return keys.sample
   end
 end
 
@@ -703,7 +759,7 @@ def round_end_prompt(state, result, word)
 end
 
 # ── Play one round ────────────────────────────────────────────
-def play_round(category, word, state)
+def play_round(category, word, state, difficulty = :easy)
   guessed       = []
   wrong_letters = []
   wrong_count   = 0
@@ -716,7 +772,7 @@ def play_round(category, word, state)
   state[:temp_multiplier] = nil
 
   loop do
-    draw_screen(category, word, guessed, wrong_letters, wrong_count, state, max_wrong_ref[0])
+    draw_screen(category, word, guessed, wrong_letters, wrong_count, state, max_wrong_ref[0], difficulty)
 
     ch = $stdin.getch.downcase
 
@@ -758,7 +814,7 @@ def play_round(category, word, state)
       sleep 0.6
 
       if word.chars.uniq.all? { |c| guessed.include?(c) }
-        draw_screen(category, word, guessed, wrong_letters, wrong_count, state, max_wrong_ref[0])
+        draw_screen(category, word, guessed, wrong_letters, wrong_count, state, max_wrong_ref[0], difficulty)
         state[:wins] += 1
         state[:peak_streak] = [state[:streak], state[:peak_streak] || 1].max
         return :win
@@ -783,12 +839,44 @@ def play_round(category, word, state)
       state[:streak] = 1
 
       if wrong_count >= max_wrong_ref[0]
-        draw_screen(category, word, guessed, wrong_letters, wrong_count, state, max_wrong_ref[0])
+        draw_screen(category, word, guessed, wrong_letters, wrong_count, state, max_wrong_ref[0], difficulty)
         state[:losses] += 1
         state[:peak_streak] = [state[:peak_streak] || 1, 1].max
         return :lose
       end
     end
+  end
+end
+
+# ── Extreme Mode Disclaimer ───────────────────────────────
+def show_extreme_prompt
+  loop do
+    clear
+    draw_header("UNLOCK EXTREME MODE")
+    draw_divider
+    puts box_line(Color.bold(Color.magenta("You have completed 25 rounds!")))
+    draw_divider
+    puts box_line(Color.bold(Color.yellow("EXTREME MODE DISCLAIMER")))
+    draw_divider
+    puts box_line(Color.red("WARNING: EXTREME DIFFICULTY"))
+    draw_divider
+    puts box_line("Difficulty Modifiers:")
+    puts box_line(Color.red("  * No category hints"))
+    puts box_line(Color.red("  * Word length is hidden"))
+    puts box_line(Color.red("  * Completely random selection"))
+    puts box_line(Color.red("  * Maximum challenge!"))
+    draw_divider
+    puts box_line("Continue in HARD mode or unlock EXTREME?")
+    draw_divider
+    puts box_line(Color.bold(Color.yellow("[H] Hard Mode   [E] Extreme Mode")))
+    draw_footer
+    print "  Choice: "
+
+    input = $stdin.getch.downcase
+    puts input
+    return :hard if input == 'h'
+    return :extreme if input == 'e'
+    puts Color.red("  Invalid choice!"); sleep 0.7
   end
 end
 
@@ -800,6 +888,7 @@ def main
     losses:            0,
     streak:            1,
     peak_streak:       1,
+    total_rounds:      0,
     inventory:         {},
     permanent_bonuses: {},
     temp_multiplier:   nil,
@@ -821,14 +910,25 @@ def main
   draw_footer
   $stdin.getch
 
+  difficulty = choose_difficulty
+
   loop do
-    category = choose_category
+    state[:total_rounds] += 1
+
+    if state[:total_rounds] == 9 && difficulty == :easy
+      difficulty = choose_difficulty
+    elsif state[:total_rounds] == 16 && difficulty == :medium
+      difficulty = choose_difficulty
+    elsif state[:total_rounds] == 26 && difficulty == :hard
+      difficulty = show_extreme_prompt
+    end
+
+    category = choose_category(difficulty)
     word     = CATEGORIES[category].sample.downcase
-    result   = play_round(category, word, state)
+    result   = play_round(category, word, state, difficulty)
     action   = round_end_prompt(state, result, word)
     break if action == :quit
 
-    # Check if time to roll for skill card
     if state[:wins] % 5 == 0 && state[:wins] > 0
       skill_card_selection_menu(state)
     end
