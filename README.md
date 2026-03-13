@@ -1,0 +1,335 @@
+# 🎮 Hangman+ — Ruby Terminal Edition
+
+A feature-rich, difficulty-scaling Hangman game with a shop system, skill cards, consumable items, and dynamic progression. Built in pure Ruby with full terminal color support.
+
+## 📋 Features
+
+### Dynamic Difficulty Scaling System
+The game automatically progresses through difficulty tiers based on your round count. **You do not manually choose difficulty**—the system scales dynamically:
+
+- **EASY (Rounds 1-8)**: You choose your preferred word category. Category is displayed during gameplay for full visibility.
+- **MEDIUM (Rounds 9-15)**: Automatically progresses. Categories are now random, but still displayed as a hint to help you strategize.
+- **HARD (Rounds 16-25)**: Automatically progresses. Random words with **hidden category** to increase challenge.
+- **EXTREME (After Round 25)**: Optional unlock requiring player confirmation. Maximum difficulty mode with **no category hint** and **word length completely hidden**.
+
+### Core Gameplay
+- **Streak System**: Build consecutive correct guesses for exponentially multiplied points.
+- **Point Scoring**: Earn points based on your base multiplier + streak multiplier (1x starting, 999x+ possible with upgrades).
+- **Win Milestone**: Win 5 consecutive rounds to unlock a random **Skill Card** roll.
+- **Performance Tracking**: Monitor wins, losses, total rounds, and peak streak in real-time.
+
+### Shop System
+Spend earned points on permanent upgrades and consumable items:
+
+- **Bonus Point** ⭐ (Permanent, Max 5) - Increases base points per correct letter (1 → 2 → 3 → etc.)
+- **Reveal a Letter** ❓ (Consumable) - Instantly reveals one hidden letter during a round
+- **Extra Life** ➕ (Consumable) - Adds 1 extra wrong guess allowed next round
+- **Double Down** ❌² (Consumable) - Doubles your streak multiplier for the current round
+- **Safety Net** 🛡️ (Consumable) - First wrong guess of a round doesn't count
+
+All consumables can be used mid-round by pressing **+** during gameplay.
+
+### Skill Cards System
+Every 5 wins, you roll for 3 random skill cards and choose one! Cards are tiered by rarity:
+
+**COMMON** (50% drop rate):
+- Steady Hand: Bonus Point gains +10% effectiveness
+- Keen Eye: Gain +1 free Reveal Letter use per roll
+- Cautious: Safety Net absorbs 2 wrong guesses instead of 1
+
+**RARE** (25% drop rate):
+- Amplify: Double Down now triples streak instead of doubling
+- Extra Resilience: Extra Life grants +2 lives instead of +1
+- Lucky Streak: Start each round with 3x streak multiplier
+
+**ULTRA RARE** (15% drop rate):
+- Momentum: Gain +2 streak per correct letter instead of +1
+- Precision: Win without wrong guesses = +50% score bonus
+- Exponential: Double Down now quadruples streak multiplier
+
+**LEGENDARY** (9% drop rate):
+- Omniscience: See the first and last letter of each word automatically
+- Second Wind: Get a free revive when you lose a round (once per 10 rounds)
+- Infinite Power: Bonus Point has no level cap and x2 effectiveness
+
+**MYTHIC** (1% drop rate):
+- Godlike: Every correct guess is perfectly scored
+- Destiny: 10% chance to auto-win any round
+
+### 14 Word Categories
+**260+ unique words** spread across diverse categories:
+
+1. **Household Items** (21 words)
+2. **Tanks** (21 historical & modern)
+3. **Utilities** (19 infrastructure terms)
+4. **Animals** (26 exotic creatures)
+5. **Countries** (24 world nations)
+6. **Space** (26 astronomical terms)
+7. **Dinosaurs** (15 prehistoric creatures)
+8. **Mythology** (20 gods & legends)
+9. **Musical Instruments** (23 instruments)
+10. **Technology** (15 modern tech)
+11. **Foods & Cuisine** (20 international dishes)
+12. **Landmarks & Monuments** (15 famous structures)
+13. **Gemstones & Minerals** (15 precious/natural materials)
+14. **Sports** (22 athletic activities)
+
+---
+
+## 🎮 How to Play
+
+### Starting the Game
+```bash
+ruby hangmanplus.rb
+```
+Press any key at the startup screen to begin. You'll start in **EASY** mode.
+
+### Round Flow
+1. The game presents a word to guess
+2. Guess one letter at a time
+3. Correct guesses reveal the letter and build your streak
+4. Wrong guesses count toward your maximum allowed mistakes
+5. Win by revealing all letters before running out of guesses
+
+### During Gameplay
+- Press **+** to open the consumables menu
+- Use purchased items mid-round for strategic advantages
+- Watch your streak multiplier grow with each correct guess
+- See remaining lives as hearts ❤️ (full) and skulls ❌ (used)
+
+### Difficulty Progression Table
+
+| Rounds | Difficulty | Starting? | Category Shown? | Word Length Shown? | How to Progress |
+|--------|-----------|-----------|------------------|-------------------|-----------------|
+| 1-8 | EASY | ✅ Yes | ✅ Yes | ✅ Yes | Auto → Round 9 |
+| 9-15 | MEDIUM | Auto | ✅ Yes | ✅ Yes | Auto → Round 16 |
+| 16-25 | HARD | Auto | ❌ No | ✅ Yes | Auto → Round 26 |
+| 26+ | EXTREME | ❌ Opt-in | ❌ No | ❌ No | Player Choice |
+
+### After Each Round
+- View score, wins/losses, and peak streak
+- Access the Shop to purchase upgrades
+- Continue to next round or quit
+- Every 5th win triggers a Skill Card roll
+
+### Skill Card Rolls
+When you've won 5 rounds, the game pauses to show you 3 random cards. You can:
+- **1/2/3**: Select that card
+- **R**: Reroll to see 3 different cards
+- **S**: Skip this reward (rare, but an option)
+
+---
+
+## 📊 Scoring System
+
+### Base Calculation
+```
+Points Earned = (1 + Permanent Bonuses) × Streak Multiplier × Temporary Modifiers
+```
+
+### Examples
+- **First correct guess**: 1 point (1 base × 1 streak)
+- **Second correct (if streak)**: 2 points (1 base × 2 streak)
+- **With +1 Bonus upgrade**: 2 points (2 base × 1 streak)
+- **With +1 Bonus + streak**: 4 points (2 base × 2 streak)
+- **With Double Down active**: 8 points (2 base × 4 streak from doubling)
+
+### Streak Rules
+- Starts at 1x each round
+- Increases by 1 for each correct letter (can reach 999x+ with multipliers)
+- Resets to 1x on a wrong guess
+- Can be boosted by Skill Cards (e.g., Lucky Streak starts you at 3x)
+
+### Wrong Guesses
+- You begin with 6 wrong guesses allowed
+- Extra Life consumable adds +1 per use
+- Safety Net consumable prevents 1 wrong guess from counting
+- Running out means you lose the round
+
+---
+
+## 🛍️ Shop Strategy
+
+### Early Game (Rounds 1-8)
+- Focus building points rather than big purchases
+- Buy Bonus Points first to increase future earnings
+- Save for consumables as you accumulate funds
+
+### Mid Game (Rounds 9-16)
+- Upgrade Bonus Points to 3-4 levels for compound growth
+- Stock up on consumables (Double Down is powerful here)
+- Plan Skill Card synergies
+
+### Late Game (Rounds 16+)
+- Double Down becomes extremely valuable with huge streaks
+- Consider Reveal Letter if you're struggling
+- Prepare for Extreme mode with Safety Net stockpile
+
+---
+
+## 🎯 Gameplay Tips
+
+1. **Early Winstreaks**: Easy mode lets you choose familiar categories—build momentum with 5 wins for early Skill Card
+2. **Medium Caution**: Categories are random but shown, so adapt your strategy per category
+3. **Hard Mode Survival**: Play conservatively. You won't know what type of word you're facing
+4. **Extreme Preparation**: Only attempt after unlocking powerful Skill Cards that reduce guesswork
+5. **Consumable Timing**: Use Double Down on high-confidence rounds when your streak is already building
+6. **Skill Card Picks**: Prioritize cards that multiply your streaks over single-use boosts
+
+---
+
+## 💻 Technical Requirements
+
+- **Ruby**: 2.5 or higher
+- **OS**: Linux, macOS, or Windows (with terminal support)
+- **Dependencies**: None (uses only Ruby standard library)
+- **Terminal**: Must support ANSI color escape sequences
+
+### Optional
+- Terminal with 80+ column width for best visuals
+- Full-screen terminal application (not minimized)
+
+---
+
+## 🚀 Installation & Running
+
+### Quick Start
+```bash
+cd c:\Users\otto.desouza\prog_1\hangmanplus
+ruby hangmanplus.rb
+```
+
+### Verify Installation
+```bash
+ruby -c hangmanplus.rb  # Check syntax
+```
+
+---
+
+## 🎨 Visual Features
+
+- **Color-Coded Difficulty**: Easy (🟢 Green), Medium (🟡 Yellow), Hard (🔴 Red), Extreme (🟣 Magenta)
+- **ASCII Hangman**: Progressive stick figure drawing
+- **Live HUD**: Score, streak multiplier, inventory, wins/losses displayed in real-time
+- **Bordered UI**: Clean box-drawing characters for menu organization
+- **Error Feedback**: Color-coded invalid input messages
+
+---
+
+## 📈 Game Architecture
+
+### Core Systems
+- **State Management**: Persistent player state across all rounds
+- **Difficulty Engine**: Automatic progression based on round counter
+- **Skill System**: Modifiable game rules from collected cards
+- **Shop System**: Purchase and inventory management
+- **HUD Renderer**: Real-time UI display during gameplay
+
+### Key Functions
+- `play_round()`: Executes one complete guessing round
+- `draw_screen()`: Renders main game interface
+- `open_shop()`: Shop/upgrade interface
+- `skill_card_selection_menu()`: 5-win reward system
+- `consumable_menu()`: Mid-round item usage
+
+---
+
+## 📝 Game State Tracking
+
+The game maintains persistent state:
+```ruby
+{
+  score:             0,         # Total points earned
+  wins:              0,         # Total wins
+  losses:            0,         # Total losses
+  total_rounds:      0,         # Rounds played (1-based)
+  streak:            1,         # Current multiplier (1x+)
+  peak_streak:       1,         # Best streak achieved
+  inventory:         {},        # Consumable items owned
+  permanent_bonuses: {},        # Permanent upgrades
+  skill_cards:       [],        # Collected cards applied
+  active_skills:     []         # Currently active modifiers
+}
+```
+
+---
+
+## 🎮 Example Playthrough
+
+**Round 1 (EASY - You Choose)**
+- Select "Animals" category
+- Word: `hippopotamus` (12 letters)
+- Guess progression: H (correct, 1 pt), I (correct, 2 pts), P (correct, 3 pts), ...
+- Win with 42 points, 4x streak
+
+**Round 9 (AUTO → MEDIUM)**
+- Random word from random category
+- Category shown: "Technology"
+- Adapt strategy based on category type
+- Continue building streak
+
+**Round 16 (AUTO → HARD)**
+- Random word, category hidden
+- Play more conservatively—you don't know word type
+- Build streak to maximize unknown words
+
+**Round 26+ (EXTREME - If Opted In)**
+- Category hidden, word length hidden
+- Maximum difficulty—pure word guessing skill
+- Huge point potential with skill card multipliers
+
+---
+
+## 🏆 Achievement Milestones
+
+- **First Win**: Complete 1 round
+- **On a Roll**: Win 5 rounds consecutively
+- **Card Collector**: Collect your first Skill Card
+- **Mid-Game Master**: Reach round 16 (Hard mode)
+- **Extreme Challenge**: Unlock and attempt Extreme mode
+- **Legendary Streak**: Build 100x+ streak multiplier
+- **Ultimate Score**: Exceed 10,000 points in one session
+
+---
+
+## 🎓 Game Design Philosophy
+
+Hangman+ is designed to be:
+- **Progressive**: Difficulty scales automatically, not forced
+- **Rewarding**: Multiple progression paths (points, streaks, cards)
+- **Accessible**: Easy mode with full familiarity
+- **Challenging**: Hard/Extreme modes for experienced players
+- **Customizable**: Skill cards allow unique builds
+- **Replayable**: 260+ words, 14 categories, endless combinations
+
+---
+
+## 📚 Version History
+
+- **v1.0** (March 2026) - Initial release with full feature set:
+  - Dynamic difficulty scaling (Easy → Medium → Hard → Extreme)
+  - Shop system with 5 items
+  - Skill card system with 20 unique cards
+  - Consumables menu
+  - 14 word categories with 260+ words
+  - Full terminal UI with colors
+
+---
+
+## 🎯 Future Possibilities
+
+Potential enhancements for future versions:
+- Leaderboard / high score persistence
+- Custom word lists
+- Multiplayer modes
+- Sound effects via `beep`
+- Session statistics export
+- Difficulty presets (speedrun, relaxed, etc.)
+
+---
+
+## 🤝 Feedback
+
+This game was built as a feature-rich terminal Hangman variant. Enjoy the progression, collect powerful Skill Cards, and see how high you can push your streak!
+
+**Good luck and have fun! 🎉**
