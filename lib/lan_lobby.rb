@@ -1,6 +1,7 @@
 require 'json'
 require 'socket'
 require 'timeout'
+require 'ipaddr'
 
 LAN_DEFAULT_PORT = 45_678
 LAN_MAX_MESSAGE_BYTES = 1_024
@@ -16,11 +17,16 @@ class LanLobbyServer
     @players = [{ username: host_username, host: true }]
     @clients = []
     @client_threads = []
+    @connection_attempts = 0
     @stopping = false
     @accept_thread = Thread.new { accept_clients }
   end
 
   attr_reader :port, :host_username
+
+  def connection_attempts
+    @mutex.synchronize { @connection_attempts }
+  end
 
   def players
     @mutex.synchronize { @players.map(&:dup) }
@@ -43,6 +49,7 @@ class LanLobbyServer
     loop do
       client = @server.accept
       accepted = @mutex.synchronize do
+        @connection_attempts += 1
         if @clients.length >= LAN_MAX_PLAYERS * 2
           false
         else
@@ -133,14 +140,26 @@ class LanLobbyServer
   end
 end
 
-def lan_local_ipv4_addresses
-  addresses = Socket.getifaddrs.each_with_object([]) do |interface, found|
+def lan_local_ipv4_interfaces
+  Socket.getifaddrs.each_with_object([]) do |interface, found|
     address = interface.addr
-    found << address.ip_address if address && address.ipv4? && !address.ipv4_loopback?
-  end.uniq
-  addresses.empty? ? ['not detected; check this computer\'s LAN IP'] : addresses
+    next unless address && address.ipv4? && !address.ipv4_loopback?
+
+    ip = address.ip_address
+    ip_address = IPAddr.new(ip)
+    next if ip.start_with?('169.254.')
+
+    wireless = interface.name.match?(/wireless|wi-?fi|wlan|802\.11/i)
+    found << { name: interface.name, address: ip, private: ip_address.private?, wireless: wireless }
+  end.uniq { |interface| [interface[:name], interface[:address]] }
+    .sort_by { |interface| [interface[:wireless] ? 0 : 1, interface[:name], interface[:address]] }
 rescue NoMethodError, SocketError
-  ['not detected; check this computer\'s LAN IP']
+  []
+end
+
+def lan_local_ipv4_addresses
+  addresses = lan_local_ipv4_interfaces.map { |interface| interface[:address] }
+  addresses.empty? ? ['not detected; check this computer\'s LAN IP'] : addresses
 end
 
 def lan_send_request(socket, request = nil, **fields)

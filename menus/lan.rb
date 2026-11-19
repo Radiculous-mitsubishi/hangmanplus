@@ -36,11 +36,24 @@ def host_lan_lobby(username)
     loop do
       clear
       draw_header("L A N  L O B B Y  (H O S T)")
-      puts box_line(Color.yellow("Share one of these addresses and port #{server.port}:"))
-      lan_local_ipv4_addresses.each { |address| puts box_line(Color.cyan(address)) }
+      puts box_line(Color.yellow("Share the address on your shared network, port #{server.port}:"))
+      puts box_line(Color.dim("Try the Wi-Fi adapter first; ignore VPN/virtual adapter addresses."))
+      interfaces = lan_local_ipv4_interfaces
+      if interfaces.empty?
+        puts box_line(Color.red("No local IPv4 adapters were detected."))
+      else
+        interfaces.each do |interface|
+          address = Color.cyan(interface[:address])
+          note = interface[:private] ? "" : Color.dim(" (not a private LAN address)")
+          adapter = interface[:wireless] ? Color.green("[Wi-Fi]") : Color.dim("[other]")
+          puts box_line("#{adapter} #{interface[:name]}: #{address}#{note}")
+        end
+      end
       puts box_line(Color.dim("Your local account is the host player; passwords stay local."))
+      puts box_line(Color.dim("Listener: 0.0.0.0:#{server.port} (all IPv4 adapters)"))
       puts
       display_lan_players(server.players)
+      puts box_line(Color.dim("TCP connection attempts seen: #{server.connection_attempts}"))
       puts
       puts box_line("Press Enter to refresh, or Q to close the lobby")
       print "  Lobby: "
@@ -52,7 +65,7 @@ def host_lan_lobby(username)
   end
 rescue ArgumentError, IOError, SystemCallError => error
   puts Color.red("  Could not host lobby: #{error.message}")
-  puts Color.dim("  Check the port and allow Ruby through the local firewall if prompted.")
+  puts Color.dim("  Check whether another program is already using that port.")
   puts Color.dim("  Press Enter to continue...")
   $stdin.gets
 end
@@ -87,13 +100,28 @@ def join_lan_lobby(username)
   end
 rescue ArgumentError, IOError, SystemCallError, Timeout::Error => error
   puts Color.red("  Could not join lobby: #{error.message}")
-  puts Color.dim("  Verify the host address, port, and local firewall settings.")
+  puts Color.dim(lan_connection_hint(error))
   puts Color.dim("  Press Enter to continue...")
   $stdin.gets
 ensure
   if socket && !socket.closed?
     lan_send_request(socket, type: 'leave') rescue nil
     socket.close
+  end
+end
+
+def lan_connection_hint(error)
+  case error
+  when Errno::ECONNREFUSED
+    "  The host was reachable but nothing accepted that port. Confirm Host is still in the lobby and the port matches."
+  when Errno::ETIMEDOUT, Timeout::Error
+    "  No reply arrived. Check the Wi-Fi/Ethernet address, same subnet, guest Wi-Fi/AP isolation, and firewall profiles."
+  when Errno::EHOSTUNREACH, Errno::ENETUNREACH
+    "  The host network is unreachable. Confirm both devices are on the same non-guest LAN/VLAN."
+  when SocketError
+    "  The address could not be resolved. Enter the host's numeric local IPv4 address, not its public IP."
+  else
+    "  Verify the host address and port, same subnet, guest Wi-Fi/AP isolation, and firewall profiles."
   end
 end
 
