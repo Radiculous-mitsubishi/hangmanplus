@@ -105,9 +105,12 @@ Choose **W** while signed in to load a custom word list by path. TXT and CSV fil
 - Sign in or create a local account, then choose **R** from the main menu.
 - One player hosts; other players choose Join and enter the host's local IP address and port (default `45678`). The host may need to allow Ruby through the computer's firewall.
 - Share the host's **Wi-Fi** adapter address when both devices use Wi-Fi; ignore VPN/virtual adapter addresses. If the host's connection-attempt count stays at zero, check guest Wi-Fi/client isolation, VLAN/subnet separation, and that both devices are on the same LAN.
-- The casual match prototype supports up to 8 players. The host starts a one-round simultaneous race; each player gets a separate word, and the host validates guesses, scores correct unique letters, enforces six misses and a shared 30-second timer, then shows standings. Ranked scoring and persistent online rankings are not implemented.
-- Passwords are never sent over the LAN. For now, the host accepts the username supplied by the signed-in client; identity is not independently verified by the host, so this lobby is not cheat-proof or suitable for trusted rankings.
+- The LAN mode supports up to 8 players. Passwords are never sent over the LAN, but the host accepts usernames supplied by clients and does not verify their local accounts; results are not cheat-proof or trusted global rankings.
 - Use only on a trusted local network. The host listens on the local network interfaces; do not forward the lobby port to the public internet.
+- **Ranked LAN loop (prototype):** The host starts a 30-second rules screen. Press **V** to vote to skip; at least 70% must vote, and a 2-player lobby requires both votes. A 5-second countdown starts each round.
+- Ranked matches run 35 rounds with a 30-second timer, six misses, one shared word, and the same category for all players. Categories are shown through round 15 and hidden from round 16 onward.
+- After rounds 5, 10, 15, 20, 25, and 30, each player gets one skill template. The host offers random unowned cards; rarity costs 1–5 templates. A player can lock an offered card for the next shop. Consumable items cost match points; the Bonus Point upgrade and slot wheel are unavailable.
+- Match points earned are separate from the shop wallet. The winner is determined by total earned points and receives other players' unspent wallet points; a tie has no payout. Results are session-only and are not trusted global rankings.
 
 ### Difficulty Presets
 - **Standard**: Existing progression (Easy → Medium → Hard); Extreme remains optional after 25 rounds.
