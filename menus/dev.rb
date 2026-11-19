@@ -38,6 +38,88 @@ def dev_passcode_prompt
   end
 end
 
+# ── Select and grant a specific skill card ───────────────────
+def dev_give_selected_card(state)
+  cards = SKILL_CARDS.values
+  page_size = 8
+  query = ""
+  page = 0
+
+  loop do
+    filtered_cards = if query.empty?
+      cards
+    else
+      cards.select do |card|
+        [card[:name], card[:rarity], card[:type], card[:description]].join(" ").downcase.include?(query.downcase)
+      end
+    end
+    page_count = [(filtered_cards.length.to_f / page_size).ceil, 1].max
+    page = [[page, 0].max, page_count - 1].min
+    page_cards = filtered_cards.slice(page * page_size, page_size) || []
+
+    clear
+    puts Color.bold(Color.red("  ╔══════════════════════════════════════════════════╗"))
+    puts Color.bold(Color.red("  ║          G I V E   S K I L L   C A R D           ║"))
+    puts Color.bold(Color.red("  ╚══════════════════════════════════════════════════╝"))
+    puts
+    puts "  Search: #{query.empty? ? Color.dim('(all cards)') : Color.cyan(query)}"
+    puts "  Page #{page + 1}/#{page_count}  |  #{filtered_cards.length} card#{'s' unless filtered_cards.length == 1} found"
+    puts
+
+    if page_cards.empty?
+      puts Color.yellow("  No cards match that search.")
+    else
+      page_cards.each_with_index do |card, index|
+        owned = already_owns?(state, card) ? Color.yellow(" [OWNED]") : ""
+        rarity = rarity_name_colored(card[:rarity])
+        puts "  #{Color.bold(Color.yellow("[#{index + 1}]"))} #{rarity} - #{Color.bold(card[:name])}#{owned}"
+        puts "      #{Color.dim(card[:description])}"
+      end
+    end
+
+    puts
+    puts "  [S] Search  [C] Clear search  [N] Next page  [P] Previous page"
+    puts "  [0] Back"
+    print Color.red("  CARD> ")
+    choice = $stdin.getch.downcase
+    puts choice
+
+    case choice
+    when '0'
+      return
+    when 's'
+      print "  Search cards: "
+      query = $stdin.gets&.strip.to_s
+      page = 0
+    when 'c'
+      query = ""
+      page = 0
+    when 'n'
+      page = (page + 1) % page_count
+    when 'p'
+      page = (page - 1) % page_count
+    when '1'..'8'
+      selected_card = page_cards[choice.to_i - 1]
+      next unless selected_card
+
+      is_duplicate = already_owns?(state, selected_card)
+      stack_duplicate = is_duplicate && stackable_card?(selected_card)
+      apply_skill_card(state, selected_card, stack_boost: stack_duplicate)
+      duplicate_note = if stack_duplicate
+        " (duplicate; stack boosted +15%)"
+      elsif is_duplicate
+        " (duplicate granted)"
+      else
+        ""
+      end
+      puts Color.green("  Granted #{selected_card[:name]} [#{selected_card[:rarity]}]#{duplicate_note}.")
+      puts Color.dim("  Press any key to return...")
+      $stdin.getch
+      return
+    end
+  end
+end
+
 # ── Dev Menu ──────────────────────────────────────────────────
 def open_dev_menu(state, difficulty_ref)
   require_relative 'inventory'
@@ -71,6 +153,7 @@ def open_dev_menu(state, difficulty_ref)
     puts "  " + Color.bold(Color.yellow("[5]")) + " Trigger skill card selection"
     puts "  " + Color.bold(Color.yellow("[6]")) + " Trigger slot machine"
     puts "  " + Color.bold(Color.yellow("[7]")) + " Give one random card (instant)"
+    puts "  " + Color.bold(Color.yellow("[C]")) + " Choose a card to grant (search/pages)"
     puts "  " + Color.bold(Color.yellow("[G]")) + " Give ALL cards (skips owned)"
     puts "  " + Color.bold(Color.yellow("[8]")) + " Wipe all cards"
     puts "  " + Color.bold(Color.yellow("[9]")) + " Force Gold Card ceremony"
@@ -95,9 +178,9 @@ def open_dev_menu(state, difficulty_ref)
     puts ch
 
     case ch
-    when '1' then state[:score] += 100;   puts Color.green("  +100 pts"); sleep 0.6
-    when '2' then state[:score] += 1000;  puts Color.green("  +1000 pts"); sleep 0.6
-    when '3' then state[:score] += 10000; puts Color.green("  +10000 pts"); sleep 0.6
+    when '1' then record_points_earned(state, 100);   puts Color.green("  +100 pts"); sleep 0.6
+    when '2' then record_points_earned(state, 1000);  puts Color.green("  +1000 pts"); sleep 0.6
+    when '3' then record_points_earned(state, 10000); puts Color.green("  +10000 pts"); sleep 0.6
     when '4' then state[:score] = 0;      puts Color.red("  Points wiped"); sleep 0.6
 
     when '5'
@@ -113,6 +196,9 @@ def open_dev_menu(state, difficulty_ref)
       tag = is_dup ? " (+15% boost, duplicate)" : ""
       puts Color.green("  Gave: #{card[:name]} [#{card[:rarity]}]#{tag}")
       sleep 1.2
+
+    when 'c'
+      dev_give_selected_card(state)
 
     when 'g'
       given  = 0
@@ -141,7 +227,14 @@ def open_dev_menu(state, difficulty_ref)
     when '9'
       award_gold_card(state)
 
-    when 'e' then difficulty_ref[0] = :easy;    puts Color.green("  Difficulty → EASY"); sleep 0.6
+    when 'e'
+      if state[:difficulty_preset] == :hardcore
+        puts Color.red("  Easy is disabled in Hardcore mode"); sleep 0.6
+      else
+        difficulty_ref[0] = :easy
+        puts Color.green("  Difficulty → EASY")
+        sleep 0.6
+      end
     when 'm' then difficulty_ref[0] = :medium;  puts Color.green("  Difficulty → MEDIUM"); sleep 0.6
     when 'h' then difficulty_ref[0] = :hard;    puts Color.green("  Difficulty → HARD"); sleep 0.6
     when 'x' then difficulty_ref[0] = :extreme; puts Color.green("  Difficulty → EXTREME"); sleep 0.6
@@ -170,7 +263,9 @@ def open_dev_menu(state, difficulty_ref)
       state[:skill_cards]      = []
       state[:active_skills]    = []
       state[:card_counts]      = {}
-      difficulty_ref[0]        = :easy
+      state[:difficulty_prompt_flags] = {}
+      state[:round_deadline]   = nil
+      difficulty_ref[0]        = difficulty_preset_settings(state[:difficulty_preset])[:starting_difficulty]
       puts Color.red("  Full state reset"); sleep 0.8
 
     when '0' then return

@@ -1,0 +1,16 @@
+{
+  "accounts": [
+    {
+      "username": "Radiculous",
+      "salt": "b05c6055f59b420e14bbc3f13d2b369e",
+      "password_hash": "392127df73bfe6a744808a4ed2af08aa9d2faa5df50804acd76b4d550bfe22c2",
+      "created_at": "2026-11-19 13:13:59 +0100"
+    },
+    {
+      "username": "Test",
+      "salt": "1ce1d7717d97f0c3389cb0f05ebb070b",
+      "password_hash": "68fc3921e33017231473b7bf0cf2d5faaa8aca285289766797d5479fa388cff7",
+      "created_at": "2026-11-19 13:15:33 +0100"
+    }
+  ]
+}

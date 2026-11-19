@@ -1,191 +1,23 @@
 {
-  "score": 9985,
-  "wins": 0,
-  "losses": 2,
+  "score": 8,
+  "save_name": "Rad sve",
+  "username": "Radiculous",
+  "total_points_earned": 33,
+  "wins": 1,
+  "losses": 3,
   "streak": 1,
-  "peak_streak": 1,
-  "total_rounds": 2,
-  "inventory": {
-    "reveal_letter": 1
-  },
+  "peak_streak": 7,
+  "total_rounds": 4,
+  "inventory": {},
   "permanent_bonuses": {
-    "bonus_multiplier": 2.2,
-    "safety_durability": 2,
-    "double_multiplier": 3.0,
-    "extra_life_grant": 2,
-    "bonus_point_no_cap": true
+    "bonus_point": 1
   },
   "temp_multiplier": null,
   "pending_extra_lives": 0,
-  "skill_cards": [
-    {
-      "name": "Steady Hand",
-      "rarity": "common",
-      "type": "item_upgrade",
-      "target": "bonus_point",
-      "effect": {
-        "bonus_multiplier": 1.1
-      },
-      "description": "Bonus Point gains +10% effectiveness"
-    },
-    {
-      "name": "Keen Eye",
-      "rarity": "common",
-      "type": "item_upgrade",
-      "target": "reveal_letter",
-      "effect": {
-        "usage_bonus": 1
-      },
-      "description": "Gain +1 free Reveal Letter use per roll"
-    },
-    {
-      "name": "Cautious",
-      "rarity": "common",
-      "type": "item_upgrade",
-      "target": "safety_net",
-      "effect": {
-        "durability": 2
-      },
-      "description": "Safety Net absorbs 2 wrong guesses instead of 1"
-    },
-    {
-      "name": "Amplify",
-      "rarity": "rare",
-      "type": "item_upgrade",
-      "target": "double_down",
-      "effect": {
-        "multiplier_boost": 3.0
-      },
-      "description": "Double Down now triples streak instead of doubling"
-    },
-    {
-      "name": "Extra Resilience",
-      "rarity": "rare",
-      "type": "item_upgrade",
-      "target": "extra_life",
-      "effect": {
-        "life_grant": 2
-      },
-      "description": "Extra Life grants +2 lives instead of +1"
-    },
-    {
-      "name": "Exponential",
-      "rarity": "ultra_rare",
-      "type": "item_upgrade",
-      "target": "double_down",
-      "effect": {
-        "multiplier_boost": 4.0
-      },
-      "description": "Double Down now quadruples streak multiplier"
-    },
-    {
-      "name": "Infinite Power",
-      "rarity": "legendary",
-      "type": "item_upgrade",
-      "target": "bonus_point",
-      "effect": {
-        "bonus_multiplier": 2.0,
-        "no_cap": true
-      },
-      "description": "Bonus Point has no level cap and x2 effectiveness"
-    }
-  ],
-  "active_skills": [
-    {
-      "name": "The Gold Card",
-      "rarity": "gold",
-      "type": "unique_skill",
-      "effect": {
-        "gold_card": true
-      },
-      "description": "Awarded for collecting every card. All point gains permanently doubled."
-    },
-    {
-      "name": "Lucky Streak",
-      "rarity": "rare",
-      "type": "unique_skill",
-      "effect": {
-        "auto_streak_start": 3
-      },
-      "description": "Start each round with 3x streak multiplier"
-    },
-    {
-      "name": "Momentum",
-      "rarity": "ultra_rare",
-      "type": "unique_skill",
-      "effect": {
-        "streak_per_correct": 2
-      },
-      "description": "Gain +2 streak per correct letter instead of +1"
-    },
-    {
-      "name": "Precision",
-      "rarity": "ultra_rare",
-      "type": "unique_skill",
-      "effect": {
-        "perfect_bonus": 0.5
-      },
-      "description": "Win without wrong guesses = +50% score bonus"
-    },
-    {
-      "name": "Omniscience",
-      "rarity": "legendary",
-      "type": "unique_skill",
-      "effect": {
-        "see_word_hint": true
-      },
-      "description": "See the first and last letter of each word automatically"
-    },
-    {
-      "name": "Second Wind",
-      "rarity": "legendary",
-      "type": "unique_skill",
-      "effect": {
-        "resurrection": true
-      },
-      "description": "Get a free revive when you lose a round (once per 10 rounds)"
-    },
-    {
-      "name": "Godlike",
-      "rarity": "mythic",
-      "type": "unique_skill",
-      "effect": {
-        "max_streak": 999,
-        "perfect_guarantee": true
-      },
-      "description": "Every correct guess is perfectly scored"
-    },
-    {
-      "name": "Destiny",
-      "rarity": "mythic",
-      "type": "unique_skill",
-      "effect": {
-        "auto_win_chance": 0.1
-      },
-      "description": "10% chance to auto-win any round"
-    }
-  ],
-  "card_counts": {
-    "The Gold Card": 1,
-    "Steady Hand": 1,
-    "Keen Eye": 1,
-    "Cautious": 1,
-    "Amplify": 1,
-    "Extra Resilience": 1,
-    "Lucky Streak": 1,
-    "Momentum": 1,
-    "Precision": 1,
-    "Exponential": 1,
-    "Omniscience": 1,
-    "Second Wind": 1,
-    "Infinite Power": 1,
-    "Godlike": 1,
-    "Destiny": 1
-  },
-  "active_skin": "default",
-  "unlocked_skins": [
-    "default"
-  ],
+  "skill_cards": [],
+  "active_skills": [],
+  "card_counts": {},
+  "slot_spins": 1,
   "difficulty": "easy",
-  "saved_at": "2026-03-27 13:04:22 +0100"
+  "saved_at": "2026-11-19 13:14:41 +0100"
 }

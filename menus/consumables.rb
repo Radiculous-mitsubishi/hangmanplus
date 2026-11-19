@@ -101,9 +101,10 @@ end
 
 def use_extra_life(state, max_wrong_ref, inv)
   if (inv[:extra_life] || 0) > 0
-    max_wrong_ref[0] += 1
+    life_grant = state.dig(:permanent_bonuses, :extra_life_grant) || 1
+    max_wrong_ref[0] += life_grant
     inv[:extra_life] -= 1
-    puts Color.green("  [+] Extra life! You can now miss #{max_wrong_ref[0]} times.")
+    puts Color.green("  [+] Extra life! +#{life_grant} lives; you can now miss #{max_wrong_ref[0]} times.")
     sleep 1
   else
     puts Color.red("  [+] You don't have any Extra Life consumables!")

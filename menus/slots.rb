@@ -107,7 +107,7 @@ def open_slot_machine(state)
         sleep 1.5
 
         # Award one skill card using existing rarity roll — handle duplicates
-        awarded = roll_skill_cards(1).first
+        awarded = roll_skill_cards(1, reels[0][:weight]).first
         key, card = awarded
 
         if already_owns?(state, card)
@@ -127,7 +127,7 @@ def open_slot_machine(state)
           else
             # Non-stackable duplicate — reroll until something useful
             10.times do
-              awarded = roll_skill_cards(1).first
+              awarded = roll_skill_cards(1, reels[0][:weight]).first
               key, card = awarded
               break unless already_owns?(state, card) && !stackable_card?(card)
             end

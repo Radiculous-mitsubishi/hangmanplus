@@ -80,8 +80,17 @@ def draw_hud(state)
   base_str   = Color.dim("next correct = +#{base * eff}pts")
   inv_str    = inventory_summary(state[:inventory])
   wins_str   = Color.dim("W:#{state[:wins]}/5")
+  lifetime_points = get_lifetime_points(state[:username])
+  preset = difficulty_preset_settings(state[:difficulty_preset])
 
-  puts box_line(Color.dim("Score: ") + score_str + "   " + streak_str + "  " + base_str + "  " + wins_str)
+  preset_label = Color.dim("Mode: ") + Color.bold(Color.magenta(preset[:name]))
+  puts box_line(Color.dim("Score: ") + score_str + "   " + streak_str + "  " + base_str + "  " + wins_str + "   " + preset_label)
+  puts box_line(Color.dim("Lifetime points: ") + Color.bold(Color.cyan("#{lifetime_points} pts")))
+  if state[:round_deadline]
+    seconds_left = [(state[:round_deadline] - Process.clock_gettime(Process::CLOCK_MONOTONIC)).ceil, 0].max
+    timer_color = seconds_left <= 10 ? Color.red("#{seconds_left}s") : Color.yellow("#{seconds_left}s")
+    puts box_line(Color.bold(Color.red("TIME LEFT: ")) + timer_color)
+  end
   unless inv_str.empty?
     puts box_line(Color.dim("Inventory: ") + Color.cyan(inv_str))
   end
@@ -101,7 +110,9 @@ end
 # ── Hangman art ───────────────────────────────────────────────
 def draw_hangman(wrong_count, max_wrong)
   art_color = wrong_count <= max_wrong / 3 ? :green : (wrong_count <= max_wrong * 2 / 3 ? :yellow : :red)
-  HANGMAN[wrong_count].each_line do |line|
+  # Extra-life upgrades can allow more misses than there are art stages.
+  stage = [[wrong_count, 0].max, HANGMAN.length - 1].min
+  HANGMAN[stage].each_line do |line|
     puts box_line(Color.send(art_color, line.rstrip))
   end
 end

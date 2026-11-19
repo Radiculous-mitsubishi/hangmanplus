@@ -201,13 +201,11 @@ end
 
 # Get current skin configuration
 def get_active_skin(state)
-  active_skin_id = state[:active_skin] || :default
-  UI_SKINS[active_skin_id] || UI_SKINS[:default]
+  UI_SKINS[:default]
 end
 
 # Check if skin is unlocked
 def skin_unlocked?(state, skin_id)
   return true if skin_id == :default
-  return true if (state[:unlocked_skins] || []).include?(skin_id)
   false
 end

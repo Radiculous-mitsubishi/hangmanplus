@@ -1,9 +1,19 @@
 # ── Play one round ────────────────────────────────────────────
-def play_round(category, word, state, difficulty = :easy)
+def register_round_timeout(state)
+  state[:losses] += 1
+  state[:streak] = 1
+  state[:peak_streak] = [state[:peak_streak] || 1, 1].max
+  :timeout
+end
+
+def play_round(category, word, state, difficulty = :easy, difficulty_ref = nil)
+  preset_settings = difficulty_preset_settings(state[:difficulty_preset])
+  timer_seconds = preset_settings[:round_timer]
+  state[:round_deadline] = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timer_seconds if timer_seconds
   guessed       = []
   wrong_letters = []
   wrong_count   = 0
-  max_wrong_ref = [BASE_MAX_WRONG + (state[:pending_extra_lives] || 0)]
+  max_wrong_ref = [preset_settings[:max_wrong] + (state[:pending_extra_lives] || 0)]
   state[:pending_extra_lives] = 0
   safety_armed  = [false]
   safety_used   = [false]
@@ -19,14 +29,40 @@ def play_round(category, word, state, difficulty = :easy)
   loop do
     draw_screen(category, word, guessed, wrong_letters, wrong_count, state, max_wrong_ref[0], difficulty)
 
-    ch = $stdin.getch.downcase
+    ch = if state[:round_deadline]
+      remaining = state[:round_deadline] - Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      remaining.positive? ? $stdin.getch(min: 0, time: [remaining, 1.0].min, intr: true) : nil
+    else
+      $stdin.getch
+    end
+
+    if ch.nil?
+      if state[:round_deadline] && Process.clock_gettime(Process::CLOCK_MONOTONIC) >= state[:round_deadline]
+        return register_round_timeout(state)
+      end
+      next
+    end
+    return register_round_timeout(state) if state[:round_deadline] && Process.clock_gettime(Process::CLOCK_MONOTONIC) >= state[:round_deadline]
+    ch = ch.downcase
+
+    if ch == '-'
+      require_relative '../menus/dev'
+      if dev_passcode_prompt
+        difficulty_ref ||= [difficulty]
+        open_dev_menu(state, difficulty_ref)
+        difficulty = difficulty_ref[0]
+      end
+      next
+    end
 
     if ch == '+'
       require_relative '../menus/consumables'
       consumable_menu(word, guessed, state, max_wrong_ref, safety_armed)
 
+      return register_round_timeout(state) if state[:round_deadline] && Process.clock_gettime(Process::CLOCK_MONOTONIC) >= state[:round_deadline]
+
       if word.chars.uniq.all? { |c| guessed.include?(c) }
-        draw_screen(category, word, guessed, wrong_letters, wrong_count, state, max_wrong_ref[0])
+        draw_screen(category, word, guessed, wrong_letters, wrong_count, state, max_wrong_ref[0], difficulty)
         state[:wins] += 1
         state[:peak_streak] = [state[:streak], state[:peak_streak] || 1].max
         return :win
@@ -46,8 +82,9 @@ def play_round(category, word, state, difficulty = :easy)
 
       base          = 1 + (state[:permanent_bonuses][:bonus_point] || 0)
       eff           = state[:streak] * temp_mult
-      earned        = base * eff
-      state[:score] += earned
+      difficulty_mult = get_difficulty_multiplier(difficulty)
+      earned        = (base * eff * difficulty_mult).round
+      record_points_earned(state, earned)
 
       streak_chain = (1..state[:streak]).map { |n| Color.bold(Color.yellow("#{n}x")) }.join(Color.dim(" → "))
       next_mult    = (state[:streak] + 1) * temp_mult
@@ -92,6 +129,8 @@ def play_round(category, word, state, difficulty = :easy)
       end
     end
   end
+ensure
+  state[:round_deadline] = nil
 end
 
 # ── Round-end prompt ──────────────────────────────────────────
@@ -99,6 +138,8 @@ def round_end_prompt(state, result, word, difficulty_ref)
   puts
   if result == :win
     puts center_text(Color.bold(Color.green("You won!  The word was: #{word.upcase}")))
+  elsif result == :timeout
+    puts center_text(Color.bold(Color.red("Time ran out!  The word was: #{word.upcase}")))
   else
     puts center_text(Color.bold(Color.red("Game over!  The word was: #{word.upcase}")))
   end
@@ -106,27 +147,25 @@ def round_end_prompt(state, result, word, difficulty_ref)
   puts center_text(Color.bold(Color.yellow("Score: #{state[:score]} pts")) +
                    Color.dim("  |  W:#{state[:wins]} L:#{state[:losses]}  Peak streak: #{state[:peak_streak]}x"))
   puts
-  puts center_text("[Sv] Save   [S] Shop   [I] Cards   [K] Skins   [-] Dev   [Y] Play Again   [N] Quit")
+  puts center_text("[P] Save   [S] Shop   [I] Cards   [D] Difficulty   [-] Dev   [Y] Play Again   [M] Main Menu   [N] Quit")
   puts
 
   loop do
     print "  Choice: "
     ch = $stdin.getch.downcase
     
-    # Check for two-character inputs (Sv)
-    if ch == 's'
-      next_ch = $stdin.getch.downcase rescue nil
-      if next_ch == 'v'
-        require_relative '../menus/saves'
-        open_save_menu(state, difficulty_ref)
-        puts center_text("[Sv] Save   [S] Shop   [I] Cards   [K] Skins   [-] Dev   [Y] Play Again   [N] Quit")
-        next
-      elsif next_ch
-        # Put the second character back into processing
-        ch = 's'
-      else
-        ch = 's'
-      end
+    if ch == 'p'
+      require_relative '../menus/saves'
+      open_save_menu(state, difficulty_ref)
+      puts center_text("[P] Save   [S] Shop   [I] Cards   [D] Difficulty   [-] Dev   [Y] Play Again   [M] Main Menu   [N] Quit")
+      next
+    end
+    
+    if ch == 'd'
+      require_relative '../game/difficulty'
+      open_difficulty_menu(state, difficulty_ref)
+      puts center_text("[P] Save   [S] Shop   [I] Cards   [D] Difficulty   [-] Dev   [Y] Play Again   [M] Main Menu   [N] Quit")
+      next
     end
     
     puts ch
@@ -134,23 +173,84 @@ def round_end_prompt(state, result, word, difficulty_ref)
     when 's'
       require_relative '../menus/shop'
       open_shop(state)
-      puts center_text("[Sv] Save   [S] Shop   [I] Cards   [K] Skins   [-] Dev   [Y] Play Again   [N] Quit")
+      puts center_text("[P] Save   [S] Shop   [I] Cards   [D] Difficulty   [-] Dev   [Y] Play Again   [M] Main Menu   [N] Quit")
     when 'i'
       require_relative '../menus/inventory'
       open_card_inventory(state)
-      puts center_text("[Sv] Save   [S] Shop   [I] Cards   [K] Skins   [-] Dev   [Y] Play Again   [N] Quit")
-    when 'k'
-      require_relative '../menus/skins'
-      open_skin_shop(state)
-      puts center_text("[Sv] Save   [S] Shop   [I] Cards   [K] Skins   [-] Dev   [Y] Play Again   [N] Quit")
+      puts center_text("[P] Save   [S] Shop   [I] Cards   [D] Difficulty   [-] Dev   [Y] Play Again   [M] Main Menu   [N] Quit")
+
     when '-'
       require_relative '../menus/dev'
       if dev_passcode_prompt
         open_dev_menu(state, difficulty_ref)
       end
-      puts center_text("[Sv] Save   [S] Shop   [I] Cards   [K] Skins   [-] Dev   [Y] Play Again   [N] Quit")
+      puts center_text("[P] Save   [S] Shop   [I] Cards   [D] Difficulty   [-] Dev   [Y] Play Again   [M] Main Menu   [N] Quit")
     when 'y' then return :play
-    when 'n' then return :quit
+    when 'm'
+      action = return_to_main_menu_prompt(state, difficulty_ref)
+      return :main_menu if action == :main_menu
+      puts center_text("[P] Save   [S] Shop   [I] Cards   [D] Difficulty   [-] Dev   [Y] Play Again   [M] Main Menu   [N] Quit")
+    when 'n'
+      print "  Type QUIT and press Enter to exit: "
+      confirmation = $stdin.gets
+      if confirmation&.strip&.casecmp("QUIT")&.zero?
+        return :quit
+      end
+      puts Color.yellow("  Quit cancelled.")
+      puts center_text("[P] Save   [S] Shop   [I] Cards   [D] Difficulty   [-] Dev   [Y] Play Again   [M] Main Menu   [N] Quit")
+    end
+  end
+end
+
+def return_to_main_menu_prompt(state, difficulty_ref)
+  loop do
+    puts
+    puts "  Return to the main menu? [S] Save first  [N] Don't save  [C] Cancel"
+    print "  Choice: "
+    choice = $stdin.gets&.strip&.downcase
+
+    case choice
+    when 'n'
+      return :main_menu
+    when 'c'
+      return :cancel
+    when 's'
+      slots = get_save_slots
+      clear
+      draw_header("S A V E  B E F O R E  M A I N  M E N U")
+      (1..MAX_SAVE_SLOTS).each do |slot|
+        slot_info = slots[slot]
+        if slot_info[:exists] && !save_available_for_user?(slot_info, state[:username])
+          puts "  #{Color.dim("[#{slot}] [Owned by #{slot_info[:username]}]")}"
+        else
+          puts "  [#{slot}] #{format_save_info(slot_info)}"
+        end
+      end
+      puts "  [C] Cancel and return to the game"
+      print "  Save to slot: "
+      slot_choice = $stdin.gets&.strip&.downcase
+
+      return :cancel if slot_choice == 'c'
+      unless slot_choice&.match?(/\A[1-#{MAX_SAVE_SLOTS}]\z/)
+        puts Color.red("  Invalid save slot.")
+        next
+      end
+
+      slot = slot_choice.to_i
+      slot_info = slots[slot]
+      if slot_info[:exists] && !save_available_for_user?(slot_info, state[:username])
+        puts Color.red("  You cannot overwrite another account's save.")
+        next
+      end
+
+      if save_game(state, difficulty_ref, slot)
+        puts Color.green("  Game saved to slot #{slot}. Returning to the main menu...")
+        return :main_menu
+      end
+
+      puts Color.red("  Save failed. You can try again or cancel.")
+    else
+      puts Color.red("  Choose S, N, or C.")
     end
   end
 end

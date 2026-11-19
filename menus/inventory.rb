@@ -1,16 +1,54 @@
 # ── Skill Card Rolling System ────────────────────────────────
-def roll_skill_cards(num_rolls = 3)
-  # Define rarity weights
+# Calculate rarity distribution based on symbol rarity (weight)
+def get_rarity_distribution(symbol_weight = nil)
+  # Default distribution (no symbol bonus)
+  default_dist = {
+    common: 50,
+    rare: 25,
+    ultra_rare: 15,
+    legendary: 9,
+    mythic: 1
+  }
+  
+  return default_dist if symbol_weight.nil?
+  
+  # Calculate rarity boost: lower weight = higher boost
+  # Weight ranges from 5 (7) to 25 (CHERRY/LEMON)
+  # Boost ranges from 5x (7) to 1x (CHERRY/LEMON)
+  max_weight = 25
+  min_weight = 5
+  rarity_boost = ((max_weight - symbol_weight.to_f) / (max_weight - min_weight) * 4 + 1).round(1)
+  
+  # Apply boost: shift percentages towards rarer cards
+  boosted_dist = {
+    common: (default_dist[:common] / (1 + rarity_boost * 0.3)).round,
+    rare: (default_dist[:rare] / (1 + rarity_boost * 0.2)).round,
+    ultra_rare: (default_dist[:ultra_rare] * (1 + rarity_boost * 0.15)).round,
+    legendary: (default_dist[:legendary] * (1 + rarity_boost * 0.25)).round,
+    mythic: (default_dist[:mythic] * (1 + rarity_boost * 0.5)).round
+  }
+  
+  # Normalize to ensure total = 100
+  total = boosted_dist.values.sum
+  boosted_dist.each { |k, v| boosted_dist[k] = (v * 100.0 / total).round }
+  
+  # Ensure total is exactly 100 by adjusting common
+  boosted_dist[:common] = 100 - (boosted_dist.values.sum - boosted_dist[:common])
+  
+  boosted_dist
+end
+
+def build_rarity_pool(distribution)
   rarities = []
-  100.times do |i|
-    case i
-    when 0..49 then rarities << :common
-    when 50..74 then rarities << :rare
-    when 75..89 then rarities << :ultra_rare
-    when 90..98 then rarities << :legendary
-    when 99 then rarities << :mythic
-    end
+  distribution.each do |rarity, percentage|
+    percentage.times { rarities << rarity }
   end
+  rarities
+end
+
+def roll_skill_cards(num_rolls = 3, symbol_weight = nil)
+  distribution = get_rarity_distribution(symbol_weight)
+  rarities = build_rarity_pool(distribution)
 
   cards = []
   num_rolls.times do

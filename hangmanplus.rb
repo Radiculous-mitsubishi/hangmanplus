@@ -11,11 +11,12 @@ require_relative 'lib/color'
 require_relative 'lib/display'
 require_relative 'lib/effects'
 require_relative 'lib/save_system'
+require_relative 'lib/leaderboard'
 
 # Load configuration files
 require_relative 'config/constants'
 require_relative 'config/items'
-require_relative 'config/skins'
+require_relative 'config/difficulty_presets'
 
 # Load menu files
 require_relative 'menus/saves'
@@ -24,5 +25,19 @@ require_relative 'menus/saves'
 require_relative 'game/game'
 
 # Start the game with save/load
-chosen_slot = main_menu_with_load
-main(chosen_slot)
+begin
+	current_username = nil
+	loop do
+		game_selection = main_menu_with_load(current_username)
+		current_username = game_selection[:username]
+		break unless main(game_selection) == :main_menu
+	end
+rescue StandardError => error
+	warn "\nHangman Plus encountered an error: #{error.class}: #{error.message}"
+	warn error.backtrace.join("\n")
+	if $stdin.tty?
+		warn "\nPress Enter to close this message..."
+		$stdin.gets
+	end
+	exit 1
+end

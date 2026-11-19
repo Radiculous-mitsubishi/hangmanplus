@@ -19,13 +19,16 @@ The game automatically progresses through difficulty tiers based on your round c
 - **Point Scoring**: Earn points based on your base multiplier + streak multiplier (1x starting, 999x+ possible with upgrades).
 - **Win Milestone**: Win 5 consecutive rounds to unlock a random **Skill Card** roll.
 - **Performance Tracking**: Monitor wins, losses, total rounds, and peak streak in real-time.
+- **Local Leaderboard**: View rankings by username and lifetime points earned across all saves.
+- **Custom Word Lists**: Play from a local TXT or CSV file by entering its path.
+- **Difficulty Presets**: Choose Standard, Relaxed, Speedrun, or Hardcore when starting a game.
 
 ### Shop System
 Spend earned points on permanent upgrades and consumable items:
 
 - **Bonus Point** ⭐ (Permanent, Max 5) - Increases base points per correct letter (1 → 2 → 3 → etc.)
 - **Reveal a Letter** ❓ (Consumable) - Instantly reveals one hidden letter during a round
-- **Extra Life** ➕ (Consumable) - Adds 1 extra wrong guess allowed next round
+- **Extra Life** ➕ (Consumable) - Adds 1 extra wrong guess for the current round
 - **Double Down** ❌² (Consumable) - Doubles your streak multiplier for the current round
 - **Safety Net** 🛡️ (Consumable) - First wrong guess of a round doesn't count
 
@@ -41,7 +44,7 @@ Every 5 wins, you roll for 3 random skill cards and choose one! Cards are tiered
 
 **RARE** (25% drop rate):
 - Amplify: Double Down now triples streak instead of doubling
-- Extra Resilience: Extra Life grants +2 lives instead of +1
+- Extra Resilience: Enhances the Extra Life consumable
 - Lucky Streak: Start each round with 3x streak multiplier
 
 **ULTRA RARE** (15% drop rate):
@@ -93,7 +96,24 @@ When rolling for skill cards, you get:
 ```bash
 ruby hangmanplus.rb
 ```
-Press any key at the startup screen to begin. You'll start in **EASY** mode automatically.
+Create a local account or sign in from the main menu before starting or loading a game. **New Game** asks for a save name and difficulty preset.
+Account credentials, saves, and leaderboard data are stored locally on this device; passwords are stored as salted hashes.
+Choose **B** from the main menu to view the local leaderboard.
+Choose **W** while signed in to load a custom word list by path. TXT and CSV files are supported, with one word per line or comma-separated words. Words must use A–Z and be 2–30 letters long; each list can contain up to 5,000 unique words. The list is embedded in the save so it remains available when the original file is moved or removed.
+
+### LAN Lobby Prototype
+- Sign in or create a local account, then choose **R** from the main menu.
+- One player hosts; other players choose Join and enter the host's local IP address and port (default `45678`). The host may need to allow Ruby through the computer's firewall.
+- The prototype supports an 8-player lobby with join, refresh, duplicate-name rejection, and leave. Multiplayer matches and ranked scoring are not implemented yet.
+- Passwords are never sent over the LAN. For now, the host accepts the username supplied by the signed-in client; identity is not independently verified by the host, so this lobby is not cheat-proof or suitable for trusted rankings.
+- Use only on a trusted local network. The host listens on the local network interfaces; do not forward the lobby port to the public internet.
+
+### Difficulty Presets
+- **Standard**: Existing progression (Easy → Medium → Hard); Extreme remains optional after 25 rounds.
+- **Relaxed**: Allows 8 wrong guesses and progresses more slowly; Extreme is optional after 50 rounds.
+- **Speedrun**: Adds a 30-second timer to each round.
+- **Hardcore**: Starts on Medium, allows 5 wrong guesses, advances to Hard at round 16, and forces Extreme at round 41 (after 40 completed rounds). Easy is unavailable.
+The selected preset is stored with the save and remains active when the game is loaded.
 
 ### Category Selection (EASY Mode Only)
 When in EASY difficulty:
@@ -111,8 +131,10 @@ When in EASY difficulty:
 
 ### During Gameplay
 - Press **+** to open the consumables menu
+- Press **-** to open the hidden developer menu; enter the dev passcode to access testing tools
 - Use purchased items mid-round for strategic advantages
 - Watch your streak multiplier grow with each correct guess
+- View your username's lifetime points total in the HUD; it is shared across saves
 - See remaining lives as hearts ❤️ (full) and skulls ❌ (used)
 
 ### Difficulty Progression Table
@@ -137,7 +159,8 @@ Press **Enter** to acknowledge and continue.
 ### After Each Round
 - View score, wins/losses, and peak streak
 - Access the Shop to purchase upgrades
-- Continue to next round or quit
+- Choose **M** to return to the main menu; you can save to a slot first, return without saving, or cancel
+- Choose **Y** to play again or **N** to quit; to guard against terminals buffering rapid keypresses, quitting requires typing **QUIT** and pressing Enter
 - Every 5th win triggers a Skill Card roll
 
 ### Skill Card Rolls
@@ -170,7 +193,7 @@ Points Earned = (1 + Permanent Bonuses) × Streak Multiplier × Temporary Modifi
 
 ### Wrong Guesses
 - You begin with 6 wrong guesses allowed
-- Extra Life consumable adds +1 per use
+- Extra Life adds +1 wrong guess per use
 - Safety Net consumable prevents 1 wrong guess from counting
 - Running out means you lose the round
 
@@ -383,14 +406,10 @@ This game was built as a feature-rich terminal Hangman variant. Improvements and
 ## 🎯 Future Possibilities
 
 Potential enhancements for future versions:
-- Leaderboard / high score persistence
-- Custom word list loading
 - Multiplayer modes (competitive/cooperative)
 - Sound effects via `beep`
 - Session statistics export (JSON/CSV)
-- Difficulty presets (speedrun, relaxed, etc.)
 - Achievements/badges system
-- Save/load game state
 
 ---
 

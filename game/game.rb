@@ -1,11 +1,16 @@
 # ── Main ──────────────────────────────────────────────────────
-def main(save_slot = nil)
+def main(game_selection = nil)
   # Load from save slot if provided
-  if save_slot
-    loaded = load_game(save_slot)
+  if game_selection.is_a?(Integer) || (game_selection.is_a?(Hash) && game_selection[:type] == :load)
+    save_slot = game_selection.is_a?(Integer) ? game_selection : game_selection[:slot]
+    username = game_selection.is_a?(Hash) ? game_selection[:username] : nil
+    loaded = load_game(save_slot, username: username)
     if loaded
       state, difficulty_name = loaded
+      state[:difficulty_preset] ||= DEFAULT_DIFFICULTY_PRESET
+      state[:difficulty_prompt_flags] ||= {}
       difficulty_ref = [difficulty_name]
+      state[:username] = username if game_selection.is_a?(Hash)
       
       clear
       draw_header("H  A  N  G  M  A  N")
@@ -20,13 +25,21 @@ def main(save_slot = nil)
     else
       puts "Failed to load save. Starting new game instead."
       state = get_initial_state
-      difficulty_ref = [:easy]
+      state[:username] = game_selection[:username] if game_selection.is_a?(Hash)
+      state[:difficulty_preset] = (game_selection[:difficulty_preset] || DEFAULT_DIFFICULTY_PRESET).to_sym if game_selection.is_a?(Hash)
+      difficulty_ref = [difficulty_preset_settings(state[:difficulty_preset])[:starting_difficulty]]
       show_initial_screen(state, difficulty_ref)
     end
   else
     # New game
     state = get_initial_state
-    difficulty_ref = [:easy]
+    if game_selection.is_a?(Hash)
+      state[:username] = game_selection[:username]
+      state[:save_name] = game_selection[:save_name]
+      state[:difficulty_preset] = (game_selection[:difficulty_preset] || DEFAULT_DIFFICULTY_PRESET).to_sym
+      state[:custom_word_list] = game_selection[:custom_word_list] if game_selection[:type] == :custom_game
+    end
+    difficulty_ref = [difficulty_preset_settings(state[:difficulty_preset])[:starting_difficulty]]
     show_initial_screen(state, difficulty_ref)
   end
 
@@ -38,26 +51,26 @@ def main(save_slot = nil)
   loop do
     state[:total_rounds] += 1
 
-    if state[:total_rounds] == 9 && difficulty_ref[0] == :easy
-      show_medium_prompt
-      difficulty_ref[0] = :medium
-    elsif state[:total_rounds] == 16 && difficulty_ref[0] == :medium
-      show_hard_prompt
-      difficulty_ref[0] = :hard
-    elsif state[:total_rounds] == 26 && difficulty_ref[0] == :hard
-      difficulty_ref[0] = show_extreme_prompt
-    end
+    advance_preset_difficulty(state, difficulty_ref)
 
-    category = choose_category(difficulty_ref[0])
-    word     = CATEGORIES[category].sample.downcase
-    result   = play_round(category, word, state, difficulty_ref[0])
+    if state[:custom_word_list]
+      category = "Custom: #{state[:custom_word_list][:name]}"
+      word = state[:custom_word_list][:words].sample
+    else
+      category = choose_category(difficulty_ref[0])
+      word = CATEGORIES[category].sample.downcase
+    end
+    result   = play_round(category, word, state, difficulty_ref[0], difficulty_ref)
     action   = round_end_prompt(state, result, word, difficulty_ref)
     break if action == :quit
 
-    if state[:wins] % 5 == 0 && state[:wins] > 0
+    if result == :win && state[:wins] % 5 == 0 && state[:wins] > 0
       skill_card_selection_menu(state)
-      # Check if player unlocked the Enchanted Mystical skin
-      check_enchanted_skin_unlock(state)
+    end
+
+    if action == :main_menu
+      clear
+      return :main_menu
     end
   end
 
@@ -68,6 +81,7 @@ def main(save_slot = nil)
   puts box_line(Color.dim("Skill Cards Collected: #{state[:skill_cards].length}"))
   draw_footer
   puts
+  :quit
 end
 
 # ── Helper: Get Initial State ──────────────────────────────────
@@ -86,8 +100,13 @@ def get_initial_state
     skill_cards:       [],
     active_skills:     [],
     card_counts:       {},
-    active_skin:       :default,
-    unlocked_skins:    [:default],
+    username:          'Player',
+    save_name:         'New Game',
+    total_points_earned: 0,
+    custom_word_list: nil,
+    difficulty_preset: DEFAULT_DIFFICULTY_PRESET,
+    difficulty_prompt_flags: {},
+
     slot_spins:        0
   }
 end
@@ -101,6 +120,8 @@ def show_initial_screen(state, difficulty_ref)
   puts box_line(Color.dim("Each correct letter earns points x your streak."))
   puts box_line(Color.dim("Win 5 rounds to roll for a skill card!"))
   puts box_line(Color.dim("Spend points in the Shop on powerful upgrades."))
+  preset = difficulty_preset_settings(state[:difficulty_preset])
+  puts box_line(Color.dim("Preset: #{preset[:name]}#{preset[:round_timer] ? " (#{preset[:round_timer]}s per round)" : ""}"))
   puts box_line(Color.dim("Press + to use consumables during gameplay!"))
   puts box_line("")
   puts box_line(Color.bold("Press any key to start..."))

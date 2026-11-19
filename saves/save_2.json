@@ -1,0 +1,26 @@
+{
+  "score": 18,
+  "save_name": "lolipop",
+  "username": "Radiculous",
+  "total_points_earned": 43,
+  "custom_word_list": null,
+  "difficulty_preset": "speedrun",
+  "difficulty_prompt_flags": {},
+  "wins": 2,
+  "losses": 1,
+  "streak": 1,
+  "peak_streak": 6,
+  "total_rounds": 3,
+  "inventory": {},
+  "permanent_bonuses": {
+    "bonus_point": 1
+  },
+  "temp_multiplier": null,
+  "pending_extra_lives": 0,
+  "skill_cards": [],
+  "active_skills": [],
+  "card_counts": {},
+  "slot_spins": 1,
+  "difficulty": "easy",
+  "saved_at": "2026-11-19 14:02:31 +0100"
+}
