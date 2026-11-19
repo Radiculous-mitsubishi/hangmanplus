@@ -105,7 +105,7 @@ Choose **W** while signed in to load a custom word list by path. TXT and CSV fil
 - Sign in or create a local account, then choose **R** from the main menu.
 - One player hosts; other players choose Join and enter the host's local IP address and port (default `45678`). The host may need to allow Ruby through the computer's firewall.
 - Share the host's **Wi-Fi** adapter address when both devices use Wi-Fi; ignore VPN/virtual adapter addresses. If the host's connection-attempt count stays at zero, check guest Wi-Fi/client isolation, VLAN/subnet separation, and that both devices are on the same LAN.
-- The prototype supports an 8-player lobby with join, refresh, duplicate-name rejection, and leave. Multiplayer matches and ranked scoring are not implemented yet.
+- The casual match prototype supports up to 8 players. The host starts a one-round simultaneous race; each player gets a separate word, and the host validates guesses, scores correct unique letters, enforces six misses and a shared 30-second timer, then shows standings. Ranked scoring and persistent online rankings are not implemented.
 - Passwords are never sent over the LAN. For now, the host accepts the username supplied by the signed-in client; identity is not independently verified by the host, so this lobby is not cheat-proof or suitable for trusted rankings.
 - Use only on a trusted local network. The host listens on the local network interfaces; do not forward the lobby port to the public internet.
 

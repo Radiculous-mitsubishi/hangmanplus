@@ -1,7 +1,9 @@
 require 'json'
+require 'openssl'
 require 'socket'
 require 'timeout'
 require 'ipaddr'
+require 'securerandom'
 
 LAN_DEFAULT_PORT = 45_678
 LAN_MAX_MESSAGE_BYTES = 1_024
@@ -11,6 +13,7 @@ LAN_USERNAME_PATTERN = /\A[a-zA-Z0-9_]{3,20}\z/
 class LanLobbyServer
   def initialize(host_username, port: LAN_DEFAULT_PORT)
     @host_username = host_username
+    @host_token = SecureRandom.hex(24)
     @server = TCPServer.new('0.0.0.0', port)
     @port = @server.addr[1]
     @mutex = Mutex.new
@@ -18,11 +21,15 @@ class LanLobbyServer
     @clients = []
     @client_threads = []
     @connection_attempts = 0
+    @host_connected = false
+    @phase = :lobby
+    @match_players = {}
+    @match_deadline = nil
     @stopping = false
     @accept_thread = Thread.new { accept_clients }
   end
 
-  attr_reader :port, :host_username
+  attr_reader :port, :host_username, :host_token
 
   def connection_attempts
     @mutex.synchronize { @connection_attempts }
@@ -30,6 +37,10 @@ class LanLobbyServer
 
   def players
     @mutex.synchronize { @players.map(&:dup) }
+  end
+
+  def phase
+    @mutex.synchronize { update_match_locked; @phase }
   end
 
   def stop
@@ -70,6 +81,7 @@ class LanLobbyServer
 
   def handle_client(socket)
     player_name = nil
+    host_client = false
     while (line = socket.gets(LAN_MAX_MESSAGE_BYTES + 1))
       if line.bytesize > LAN_MAX_MESSAGE_BYTES || !line.end_with?("\n")
         send_response(socket, type: 'error', message: 'Request is too large.')
@@ -78,6 +90,27 @@ class LanLobbyServer
 
       request = JSON.parse(line)
       case request['type']
+      when 'host_join'
+        token = request['token'].to_s
+        valid_token = token.bytesize == @host_token.bytesize &&
+                      OpenSSL.fixed_length_secure_compare(token, @host_token)
+        unless valid_token && socket.peeraddr[3] == '127.0.0.1'
+          send_response(socket, type: 'error', message: 'Host control authentication failed.')
+          break
+        end
+        joined = @mutex.synchronize do
+          next false if @host_connected
+
+          @host_connected = true
+          true
+        end
+        unless joined
+          send_response(socket, type: 'error', message: 'Host is already connected to the lobby.')
+          break
+        end
+        player_name = @host_username
+        host_client = true
+        send_lobby(socket)
       when 'join'
         unless player_name.nil?
           send_response(socket, type: 'error', message: 'Already joined this lobby.')
@@ -90,7 +123,9 @@ class LanLobbyServer
           next
         end
         result = @mutex.synchronize do
-          if @players.any? { |player| player[:username].casecmp?(player_name) }
+          if @phase != :lobby
+            :started
+          elsif @players.any? { |player| player[:username].casecmp?(player_name) }
             :duplicate
           elsif @players.length >= LAN_MAX_PLAYERS
             :full
@@ -103,6 +138,10 @@ class LanLobbyServer
           send_response(socket, type: 'error', message: 'That username is already in this lobby.')
           player_name = nil
           next
+        elsif result == :started
+          send_response(socket, type: 'error', message: 'The match has already started; join the next lobby.')
+          player_name = nil
+          next
         elsif result == :full
           send_response(socket, type: 'error', message: 'This prototype lobby is full (maximum 8 players).')
           player_name = nil
@@ -111,6 +150,30 @@ class LanLobbyServer
         send_lobby(socket)
       when 'list'
         send_lobby(socket) if player_name
+      when 'start'
+        if host_client
+          started, message = @mutex.synchronize { start_match_locked }
+          if started
+            send_response(socket, match_snapshot_locked(player_name))
+          else
+            send_response(socket, type: 'error', message: message)
+          end
+        else
+          send_response(socket, type: 'error', message: 'Only the host can start a match.')
+        end
+      when 'state'
+        if player_name
+          response = @mutex.synchronize do
+            update_match_locked
+            @phase == :lobby ? lobby_snapshot_locked : match_snapshot_locked(player_name)
+          end
+          send_response(socket, **response)
+        end
+      when 'guess'
+        if player_name
+          response = @mutex.synchronize { submit_guess_locked(player_name, request['letter']) }
+          send_response(socket, **response)
+        end
       when 'leave'
         send_response(socket, type: 'left')
         break
@@ -124,14 +187,105 @@ class LanLobbyServer
     nil
   ensure
     if player_name
-      @mutex.synchronize { @players.reject! { |player| player[:username].casecmp?(player_name) } }
+      @mutex.synchronize do
+        if host_client
+          @host_connected = false
+        else
+          @players.reject! { |player| player[:username].casecmp?(player_name) }
+          if @phase == :lobby
+            @match_players.delete(player_name)
+          elsif @match_players[player_name] && @match_players[player_name][:status] == 'playing'
+            @match_players[player_name][:status] = 'left'
+          end
+        end
+        update_match_locked
+      end
     end
     @mutex.synchronize { @clients.delete(socket) }
     socket.close unless socket.closed?
   end
 
   def send_lobby(socket)
-    send_response(socket, type: 'lobby', players: players)
+    snapshot = @mutex.synchronize { lobby_snapshot_locked }
+    send_response(socket, **snapshot)
+  end
+
+  def lobby_snapshot_locked
+    { type: 'lobby', phase: @phase.to_s, players: @players.map(&:dup) }
+  end
+
+  def start_match_locked
+    return [false, 'A match is already in progress.'] unless @phase == :lobby
+    return [false, 'At least two players must join before starting.'] if @players.length < 2
+
+    now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    @match_deadline = now + 30
+    @match_players = @players.each_with_object({}) do |player, match|
+      match[player[:username]] = {
+        word: CATEGORIES.values.flatten.sample.downcase,
+        guessed: [],
+        wrong: 0,
+        score: 0,
+        status: 'playing'
+      }
+    end
+    @phase = :playing
+    [true, nil]
+  end
+
+  def submit_guess_locked(username, raw_letter)
+    update_match_locked
+    return { type: 'error', message: 'No match is currently in progress.' } unless @phase == :playing
+
+    player = @match_players[username]
+    return { type: 'error', message: 'Player is not part of this match.' } unless player
+    return match_snapshot_locked(username) unless player[:status] == 'playing'
+
+    letter = raw_letter.to_s.downcase
+    return { type: 'error', message: 'Guess must be one letter from A to Z.' } unless letter.match?(/\A[a-z]\z/)
+    return match_snapshot_locked(username) if player[:guessed].include?(letter)
+
+    player[:guessed] << letter
+    if player[:word].include?(letter)
+      player[:score] += 1
+      if player[:word].chars.uniq.all? { |char| player[:guessed].include?(char) }
+        player[:status] = 'won'
+      end
+    else
+      player[:wrong] += 1
+      player[:status] = 'out' if player[:wrong] >= BASE_MAX_WRONG
+    end
+    update_match_locked
+    match_snapshot_locked(username)
+  end
+
+  def update_match_locked
+    return unless @phase == :playing
+
+    if Process.clock_gettime(Process::CLOCK_MONOTONIC) >= @match_deadline
+      @match_players.each_value { |player| player[:status] = 'time' if player[:status] == 'playing' }
+    end
+    @phase = :finished if @match_players.values.all? { |player| player[:status] != 'playing' }
+  end
+
+  def match_snapshot_locked(username)
+    update_match_locked
+    own = @match_players[username]
+    return { type: 'error', message: 'No match state is available for this player.' } unless own
+
+    standings = @match_players.map do |name, player|
+      { username: name, score: player[:score], status: player[:status] }
+    end.sort_by { |player| [-player[:score], player[:username].downcase] }
+    {
+      type: 'match_state',
+      phase: @phase.to_s,
+      seconds_left: [(@match_deadline - Process.clock_gettime(Process::CLOCK_MONOTONIC)).ceil, 0].max,
+      player: {
+        word: own[:word], guessed: own[:guessed].dup, wrong: own[:wrong],
+        score: own[:score], status: own[:status]
+      },
+      standings: standings
+    }
   end
 
   def send_response(socket, response = nil, **fields)
